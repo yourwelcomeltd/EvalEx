@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * <h1>EvalEx - Java Expression Evaluator</h1>
@@ -417,6 +418,11 @@ public class Expression {
 	 */
 	private Map<String,LazyFunction> functions = new TreeMap<String, LazyFunction>(String.CASE_INSENSITIVE_ORDER);
 
+	/**
+	 * All externally defined functions with name and implementation.
+	 */
+	private Map<String, ExternalLazyFunction> externalFunctions = new TreeMap<String, ExternalLazyFunction>(String.CASE_INSENSITIVE_ORDER);
+	
 	/**
 	 * All defined variables with name and value.
 	 */
@@ -1134,6 +1140,9 @@ public class Expression {
 			} else if (functions.containsKey(token.toUpperCase(Locale.ROOT))) {
 				stack.push(token);
 				lastFunction = token;
+			} else if (externalFunctions.containsKey(token.toUpperCase(Locale.ROOT))) {
+				stack.push(token);
+				lastFunction = token;
 			} else if (Character.isLetter(token.charAt(0))) {
 				stack.push(token);
 			} else if (",".equals(token)) {
@@ -1174,7 +1183,7 @@ public class Expression {
 					}
 					// if the ( is preceded by a valid function, then it
 					// denotes the start of a parameter list
-					if (functions.containsKey(previousToken.toUpperCase(Locale.ROOT))) {
+					if (functions.containsKey(previousToken.toUpperCase(Locale.ROOT)) || externalFunctions.containsKey(previousToken.toUpperCase(Locale.ROOT))) {
 						outputQueue.add(token);
 					}
 				}
@@ -1192,8 +1201,9 @@ public class Expression {
 				}
 				stack.pop();
 				if (!stack.isEmpty()
-						&& functions.containsKey(stack.peek().toUpperCase(
-								Locale.ROOT))) {
+						&& (functions.containsKey(stack.peek().toUpperCase(
+								Locale.ROOT)) || externalFunctions.containsKey(stack.peek().toUpperCase(
+										Locale.ROOT)))) {
 					outputQueue.add(stack.pop());
 				}
 			}
@@ -1240,6 +1250,20 @@ public class Expression {
 				});
 			} else if (functions.containsKey(token.toUpperCase(Locale.ROOT))) {
 				LazyFunction f = functions.get(token.toUpperCase(Locale.ROOT));
+				ArrayList<LazyNumber> p = new ArrayList<LazyNumber>(
+						!f.numParamsVaries() ? f.getNumParams() : 0);
+				// pop parameters off the stack until we hit the start of 
+				// this function's parameter list
+				while (!stack.isEmpty() && stack.peek() != PARAMS_START) {
+					p.add(0, stack.pop());
+				}
+				if (stack.peek() == PARAMS_START) {
+					stack.pop();
+				}
+				LazyNumber fResult = f.lazyEval(p);
+				stack.push(fResult);
+			} else if (externalFunctions.containsKey(token.toUpperCase(Locale.ROOT))) {
+				ExternalLazyFunction f = externalFunctions.get(token.toUpperCase(Locale.ROOT));
 				ArrayList<LazyNumber> p = new ArrayList<LazyNumber>(
 						!f.numParamsVaries() ? f.getNumParams() : 0);
 				// pop parameters off the stack until we hit the start of 
@@ -1341,6 +1365,30 @@ public class Expression {
 	}
 
 	/**
+	 * Adds an external lazy function function to the list of supported functions
+	 *
+	 * @param function
+	 *            The external function to add.
+	 * @return The previous operator with that name, or <code>null</code> if
+	 *         there was none.
+	 */
+	public ExternalLazyFunction addExternalLazyFunction(ExternalLazyFunction function) {
+		return  externalFunctions.put(function.getName(), function);
+	}
+
+	/**
+	 * Adds an external function to the list of supported functions
+	 * 
+	 * @param function
+	 *            The function to add.
+	 * @return The previous operator with that name, or <code>null</code> if
+	 *         there was none.
+	 */
+	public ExternalFunction addExternalFunction(ExternalFunction function) {
+		return (ExternalFunction) externalFunctions.put(function.getName(), function);
+	}
+
+	/**
 	 * Adds a lazy function function to the list of supported functions
 	 *
 	 * @param function
@@ -1352,6 +1400,7 @@ public class Expression {
 		return  functions.put(function.getName(), function);
 	}
 
+	
 	/**
 	 * Sets a variable value.
 	 * 
@@ -1500,6 +1549,17 @@ public class Expression {
 				}
 				// push the result of the function
 				stack.set(stack.size() - 1, stack.peek() + 1);
+			} else if(externalFunctions.containsKey(token.toUpperCase(Locale.ROOT))) {
+				ExternalLazyFunction f = externalFunctions.get(token.toUpperCase(Locale.ROOT));
+				int numParams = stack.pop();
+				if (!f.numParamsVaries() && numParams != f.getNumParams()) {
+					throw new ExpressionException("Function " + token + " expected " + f.getNumParams() + " parameters, got " + numParams);
+				}
+				if (stack.size() <= 0) {
+					throw new ExpressionException("Too many function calls, maximum scope exceeded");
+				}
+				// push the result of the function
+				stack.set(stack.size() - 1, stack.peek() + 1);
 			} else if ("(".equals(token)) {
 				stack.push(0);
 			} else {
@@ -1553,7 +1613,10 @@ public class Expression {
 	 * @return All declared functions.
      */
 	public Set<String> getDeclaredFunctions() {
-		return Collections.unmodifiableSet(functions.keySet());
+		Set<String> result = new TreeSet<String>();
+		result.addAll(Collections.unmodifiableSet(functions.keySet()));
+		result.addAll(Collections.unmodifiableSet(externalFunctions.keySet()));
+		return Collections.unmodifiableSet(result);
 	}
 
 	/**
@@ -1577,7 +1640,8 @@ public class Expression {
 					|| token.equals("(") || token.equals(")")
 					|| token.equals(",") || isNumber(token)
 					|| token.equals("PI") || token.equals("e")
-					|| token.equals("TRUE") || token.equals("FALSE")) {
+					|| token.equals("TRUE") || token.equals("FALSE")
+					|| externalFunctions.containsKey(token)) {
 				continue;
 			}
 			result.add(token);
