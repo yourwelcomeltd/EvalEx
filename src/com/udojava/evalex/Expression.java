@@ -420,7 +420,7 @@ public class Expression {
 	/**
 	 * All defined variables with name and value.
 	 */
-	private Map<String, BigDecimal> variables = new TreeMap<String, BigDecimal>(String.CASE_INSENSITIVE_ORDER);
+	private Map<String, Object> variables = new TreeMap<String, Object>(String.CASE_INSENSITIVE_ORDER);
 
 	/**
 	 * What character to use for decimal separators.
@@ -437,7 +437,7 @@ public class Expression {
 	 * used for parsing varying numbers of function parameters.
 	 */
 	private static final LazyNumber PARAMS_START = new LazyNumber() {
-		public BigDecimal eval() {
+		public Object eval() {
 			return null;
 		}
 	};
@@ -458,7 +458,7 @@ public class Expression {
 	 * LazyNumber interface created for lazily evaluated functions
 	 */
 	interface LazyNumber {
-		BigDecimal eval();
+		Object eval();
 	}
 
 	public abstract class LazyFunction {
@@ -514,12 +514,12 @@ public class Expression {
 		}
 
 		public LazyNumber lazyEval(List<LazyNumber> lazyParams) {
-			final List<BigDecimal> params = new ArrayList<BigDecimal>();
+			final List<Object> params = new ArrayList<Object>();
 			for (LazyNumber lazyParam : lazyParams) {
 				params.add(lazyParam.eval());
 			}
 			return new LazyNumber() {
-				public BigDecimal eval() {
+				public Object eval() {
 					return Function.this.eval(params);
 				}
 			};
@@ -530,11 +530,11 @@ public class Expression {
 		 *
 		 * @param parameters
 		 *            Parameters will be passed by the expression evaluator as a
-		 *            {@link List} of {@link BigDecimal} values.
-		 * @return The function must return a new {@link BigDecimal} value as a
+		 *            {@link List} of {@link Object} values.
+		 * @return The function must return a new {@link Object} value as a
 		 *         computing result.
 		 */
-		public abstract BigDecimal eval(List<BigDecimal> parameters);
+		public abstract Object eval(List<Object> parameters);
 	}
 	/**
 	 * Abstract definition of a supported operator. An operator is defined by
@@ -592,7 +592,7 @@ public class Expression {
 		 *            Operand 2.
 		 * @return The result of the operation.
 		 */
-		public abstract BigDecimal eval(BigDecimal v1, BigDecimal v2);
+		public abstract Object eval(Object v1, Object v2);
 	}
 
 	/**
@@ -746,136 +746,232 @@ public class Expression {
 		this.originalExpression = expression;
 		addOperator(new Operator("+", 20, true) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.add(v2, mc);
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).add((BigDecimal)v2, mc);
+                }
+                return v1.toString() + v2.toString();
 			}
 		});
 		addOperator(new Operator("-", 20, true) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.subtract(v2, mc);
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).subtract((BigDecimal)v2, mc);
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 		addOperator(new Operator("*", 30, true) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.multiply(v2, mc);
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).multiply((BigDecimal) v2, mc);
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 		addOperator(new Operator("/", 30, true) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.divide(v2, mc);
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).divide((BigDecimal) v2, mc);
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 		addOperator(new Operator("%", 30, true) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.remainder(v2, mc);
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).remainder((BigDecimal) v2, mc);
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 		addOperator(new Operator("^", 40, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
 				/*- 
 				 * Thanks to Gene Marin:
 				 * http://stackoverflow.com/questions/3579779/how-to-do-a-fractional-power-on-bigdecimal-in-java
 				 */
-				int signOf2 = v2.signum();
-				double dn1 = v1.doubleValue();
-				v2 = v2.multiply(new BigDecimal(signOf2)); // n2 is now positive
-				BigDecimal remainderOf2 = v2.remainder(BigDecimal.ONE);
-				BigDecimal n2IntPart = v2.subtract(remainderOf2);
-				BigDecimal intPow = v1.pow(n2IntPart.intValueExact(), mc);
-				BigDecimal doublePow = new BigDecimal(Math.pow(dn1,
-						remainderOf2.doubleValue()));
+                    int signOf2 = ((BigDecimal)v2).signum();
+                    double dn1 = ((BigDecimal)v1).doubleValue();
+                    v2 = ((BigDecimal)v2).multiply(new BigDecimal(signOf2)); // n2 is now positive
+                    BigDecimal remainderOf2 = ((BigDecimal)v2).remainder(BigDecimal.ONE);
+                    BigDecimal n2IntPart = ((BigDecimal)v2).subtract(remainderOf2);
+                    BigDecimal intPow = ((BigDecimal)v1).pow(n2IntPart.intValueExact(), mc);
+                    BigDecimal doublePow = new BigDecimal(Math.pow(dn1, remainderOf2.doubleValue()));
 
-				BigDecimal result = intPow.multiply(doublePow, mc);
-				if (signOf2 == -1) {
-					result = BigDecimal.ONE.divide(result, mc.getPrecision(),
-							RoundingMode.HALF_UP);
-				}
-				return result;
+                    BigDecimal result = intPow.multiply(doublePow, mc);
+                    if (signOf2 == -1)
+                    {
+                        result = BigDecimal.ONE.divide(result, mc.getPrecision(), RoundingMode.HALF_UP);
+                    }
+                    return result;
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 		addOperator(new Operator("&&", 4, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				boolean b1 = !v1.equals(BigDecimal.ZERO);
-				boolean b2 = !v2.equals(BigDecimal.ZERO);
+			public Object eval(Object v1, Object v2) {
+				boolean b1 = false;
+                if(v1 instanceof BigDecimal)
+                {
+                    b1 = !v1.equals(BigDecimal.ZERO);
+                }
+                else if(v1 instanceof String)
+                {
+                    String s1 = (String) v1;
+                    b1 = isTrue(s1);
+                }
+				boolean b2 = false;
+                if(v2 instanceof BigDecimal)
+                {
+                    b2 = !v2.equals(BigDecimal.ZERO);
+                }
+                else if(v2 instanceof String)
+                {
+                    String s2 = (String) v2;
+                    b2 = isTrue(s2);
+                }
 				return b1 && b2 ? BigDecimal.ONE : BigDecimal.ZERO;
 			}
 		});
 
 		addOperator(new Operator("||", 2, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				boolean b1 = !v1.equals(BigDecimal.ZERO);
-				boolean b2 = !v2.equals(BigDecimal.ZERO);
+			public Object eval(Object v1, Object v2) {
+                boolean b1 = false;
+                if(v1 instanceof BigDecimal)
+                {
+                    b1 = !v1.equals(BigDecimal.ZERO);
+                }
+                else if(v1 instanceof String)
+                {
+                    String s1 = (String) v1;
+                    b1 = isTrue(s1);
+                }
+                boolean b2 = false;
+                if(v2 instanceof BigDecimal)
+                {
+                    b2 = !v2.equals(BigDecimal.ZERO);
+                }
+                else if(v2 instanceof String)
+                {
+                    String s2 = (String) v2;
+                    b2 = isTrue(s2);
+                }
 				return b1 || b2 ? BigDecimal.ONE : BigDecimal.ZERO;
 			}
 		});
 
 		addOperator(new Operator(">", 10, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.compareTo(v2) == 1 ? BigDecimal.ONE : BigDecimal.ZERO;
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).compareTo((BigDecimal) v2) == 1 ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 
 		addOperator(new Operator(">=", 10, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.compareTo(v2) >= 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).compareTo((BigDecimal) v2) >= 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 
 		addOperator(new Operator("<", 10, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.compareTo(v2) == -1 ? BigDecimal.ONE
-						: BigDecimal.ZERO;
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).compareTo((BigDecimal) v2) == -1 ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 
 		addOperator(new Operator("<=", 10, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.compareTo(v2) <= 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).compareTo((BigDecimal) v2) <= 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
+                throw new ExpressionException(getOper() + " is not supported between " + v1.toString() + " and " + v2.toString());
 			}
 		});
 
 		addOperator(new Operator("=", 7, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.compareTo(v2) == 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).compareTo((BigDecimal) v2) == 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
+                else
+                {
+                    return v1.equals(v2) ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
 			}
 		});
 		addOperator(new Operator("==", 7, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
+			public Object eval(Object v1, Object v2) {
 				return operators.get("=").eval(v1, v2);
 			}
 		});
 
 		addOperator(new Operator("!=", 7, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
-				return v1.compareTo(v2) != 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+			public Object eval(Object v1, Object v2) {
+                if(v1 instanceof BigDecimal && v2 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)v1).compareTo((BigDecimal) v2) != 0 ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
+                else
+                {
+                    return v1.equals(v2) ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
 			}
 		});
 		addOperator(new Operator("<>", 7, false) {
 			@Override
-			public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
+			public Object eval(Object v1, Object v2) {
 				return operators.get("!=").eval(v1, v2);
 			}
 		});
 
 		addFunction(new Function("NOT", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				boolean zero = parameters.get(0).compareTo(BigDecimal.ZERO) == 0;
-				return zero ? BigDecimal.ONE : BigDecimal.ZERO;
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    boolean zero = ((BigDecimal)p1).compareTo(BigDecimal.ZERO) == 0;
+                    return zero ? BigDecimal.ONE : BigDecimal.ZERO;
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 
@@ -889,196 +985,359 @@ public class Expression {
 
 		addFunction(new Function("RANDOM", 0) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
+			public Object eval(List<Object> parameters) {
 				double d = Math.random();
 				return new BigDecimal(d, mc);
 			}
 		});
 		addFunction(new Function("SIN", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.sin(Math.toRadians(parameters.get(0)
-						.doubleValue()));
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.sin(Math.toRadians(((BigDecimal)p1).doubleValue()));
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("COS", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.cos(Math.toRadians(parameters.get(0)
-						.doubleValue()));
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.cos(Math.toRadians(((BigDecimal)p1).doubleValue()));
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("TAN", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.tan(Math.toRadians(parameters.get(0)
-						.doubleValue()));
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.tan(Math.toRadians(((BigDecimal)p1).doubleValue()));
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("ASIN", 1) { // added by av
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.toDegrees(Math.asin(parameters.get(0)
-						.doubleValue()));
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.toDegrees(Math.asin(((BigDecimal) p1).doubleValue()));
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("ACOS", 1) { // added by av
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.toDegrees(Math.acos(parameters.get(0)
-						.doubleValue()));
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.toDegrees(Math.acos(((BigDecimal)p1).doubleValue()));
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("ATAN", 1) { // added by av
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.toDegrees(Math.atan(parameters.get(0)
-						.doubleValue()));
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.toDegrees(Math.atan(((BigDecimal)p1).doubleValue()));
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("SINH", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.sinh(parameters.get(0).doubleValue());
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.sinh(((BigDecimal)p1).doubleValue());
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("COSH", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.cosh(parameters.get(0).doubleValue());
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.cosh(((BigDecimal)p1).doubleValue());
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("TANH", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.tanh(parameters.get(0).doubleValue());
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.tanh(((BigDecimal)p1).doubleValue());
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("RAD", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.toRadians(parameters.get(0).doubleValue());
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.toRadians(((BigDecimal)p1).doubleValue());
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("DEG", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.toDegrees(parameters.get(0).doubleValue());
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.toDegrees(((BigDecimal)p1).doubleValue());
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("MAX", -1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
+			public Object eval(List<Object> parameters) {
 				if (parameters.size() == 0) {
 					throw new ExpressionException("MAX requires at least one parameter");
 				}
 				BigDecimal max = null;
-				for (BigDecimal parameter : parameters) {
-					if (max == null || parameter.compareTo(max) > 0) {
-						max = parameter;
-					}
+				for (Object parameter : parameters) {
+                    if(parameter instanceof BigDecimal)
+                    {
+                        if (max == null || ((BigDecimal)parameter).compareTo(max) > 0)
+                        {
+                            max = (BigDecimal) parameter;
+                        }
+                    }
+                    else
+                    {
+                        throw new ExpressionException(parameter.toString() + " is not a valid parameter for " + getName());
+                    }
 				}
 				return max;
 			}
 		});
 		addFunction(new Function("MIN", -1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
+			public Object eval(List<Object> parameters) {
 				if (parameters.size() == 0) {
 					throw new ExpressionException("MIN requires at least one parameter");
 				}
 				BigDecimal min = null;
-				for (BigDecimal parameter : parameters) {
-					if (min == null || parameter.compareTo(min) < 0) {
-						min = parameter;
-					}
+				for (Object parameter : parameters) {
+                    if(parameter instanceof BigDecimal)
+                    {
+                        if (min == null || ((BigDecimal)parameter).compareTo(min) < 0)
+                        {
+                            min = (BigDecimal) parameter;
+                        }
+                    }
+                    else
+                    {
+                        throw new ExpressionException(parameter.toString() + " is not a valid parameter for " + getName());
+                    }
 				}
 				return min;
 			}
 		});
 		addFunction(new Function("ABS", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				return parameters.get(0).abs(mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    return ((BigDecimal)p1).abs(mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("LOG", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.log(parameters.get(0).doubleValue());
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.log(((BigDecimal)p1).doubleValue());
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("LOG10", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				double d = Math.log10(parameters.get(0).doubleValue());
-				return new BigDecimal(d, mc);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    double d = Math.log10(((BigDecimal)p1).doubleValue());
+                    return new BigDecimal(d, mc);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("ROUND", 2) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				BigDecimal toRound = parameters.get(0);
-				int precision = parameters.get(1).intValue();
-				return toRound.setScale(precision, mc.getRoundingMode());
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                Object p2 = parameters.get(1);
+                if(p1 instanceof BigDecimal && p2 instanceof BigDecimal)
+                {
+                    BigDecimal toRound = (BigDecimal) p1;
+                    int precision = ((BigDecimal)p2).intValue();
+                    return toRound.setScale(precision, mc.getRoundingMode());
+                }
+                else
+                {
+                    if(p2 instanceof BigDecimal)
+                    {
+                        throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                    }
+                    else
+                    {
+                        throw new ExpressionException(p2.toString() + " is not a valid parameter for " + getName());
+                    }
+                }
 			}
 		});
 		addFunction(new Function("FLOOR", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				BigDecimal toRound = parameters.get(0);
-				return toRound.setScale(0, RoundingMode.FLOOR);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    BigDecimal toRound = ((BigDecimal)p1);
+                    return toRound.setScale(0, RoundingMode.FLOOR);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("CEILING", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
-				BigDecimal toRound = parameters.get(0);
-				return toRound.setScale(0, RoundingMode.CEILING);
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
+                    BigDecimal toRound = ((BigDecimal)p1);
+                    return toRound.setScale(0, RoundingMode.CEILING);
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 		addFunction(new Function("SQRT", 1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
+			public Object eval(List<Object> parameters) {
+                Object p1 = parameters.get(0);
+                if(p1 instanceof BigDecimal)
+                {
 				/*
 				 * From The Java Programmers Guide To numerical Computing
 				 * (Ronald Mak, 2003)
 				 */
-				BigDecimal x = parameters.get(0);
-				if (x.compareTo(BigDecimal.ZERO) == 0) {
-					return new BigDecimal(0);
-				}
-				if (x.signum() < 0) {
-					throw new ExpressionException(
-							"Argument to SQRT() function must not be negative");
-				}
-				BigInteger n = x.movePointRight(mc.getPrecision() << 1)
-						.toBigInteger();
+                    BigDecimal x = (BigDecimal) p1;
+                    if (x.compareTo(BigDecimal.ZERO) == 0)
+                    {
+                        return new BigDecimal(0);
+                    }
+                    if (x.signum() < 0)
+                    {
+                        throw new ExpressionException("Argument to SQRT() function must not be negative");
+                    }
+                    BigInteger n = x.movePointRight(mc.getPrecision() << 1).toBigInteger();
 
-				int bits = (n.bitLength() + 1) >> 1;
-				BigInteger ix = n.shiftRight(bits);
-				BigInteger ixPrev;
+                    int bits = (n.bitLength() + 1) >> 1;
+                    BigInteger ix = n.shiftRight(bits);
+                    BigInteger ixPrev;
 
-				do {
-					ixPrev = ix;
-					ix = ix.add(n.divide(ix)).shiftRight(1);
-					// Give other threads a chance to work;
-					Thread.yield();
-				} while (ix.compareTo(ixPrev) != 0);
+                    do
+                    {
+                        ixPrev = ix;
+                        ix = ix.add(n.divide(ix)).shiftRight(1);
+                        // Give other threads a chance to work;
+                        Thread.yield();
+                    } while (ix.compareTo(ixPrev) != 0);
 
-				return new BigDecimal(ix, mc.getPrecision());
+                    return new BigDecimal(ix, mc.getPrecision());
+                }
+                else
+                {
+                    throw new ExpressionException(p1.toString() + " is not a valid parameter for " + getName());
+                }
 			}
 		});
 
@@ -1108,6 +1367,26 @@ public class Expression {
 		}
 		return true;
 	}
+
+	private boolean isTrue(String st) {
+        if(st == null)
+        {
+            return false;
+        }
+        if(st.length() == 0)
+        {
+            return false;
+        }
+        if("false".equalsIgnoreCase(st))
+        {
+            return false;
+        }
+        if("0".equals(st))
+        {
+            return false;
+        }
+        return true;
+    }
 
 	/**
 	 * Implementation of the <i>Shunting Yard</i> algorithm to transform an
@@ -1219,7 +1498,7 @@ public class Expression {
 	 * 
 	 * @return The result of the expression.
 	 */
-	public BigDecimal eval() {
+	public Object eval() {
 
 		Stack<LazyNumber> stack = new Stack<LazyNumber>();
 
@@ -1228,15 +1507,23 @@ public class Expression {
 				final LazyNumber v1 = stack.pop();
 				final LazyNumber v2 = stack.pop();
 				LazyNumber number = new LazyNumber() {
-					public BigDecimal eval() {
+					public Object eval() {
 						return operators.get(token).eval(v2.eval(), v1.eval());
 					}
 				};
 				stack.push(number);
 			} else if (variables.containsKey(token)) {
 				stack.push(new LazyNumber() {
-					public BigDecimal eval() {
-						return variables.get(token).round(mc);
+					public Object eval() {
+						Object var = variables.get(token);
+                        if(var instanceof BigDecimal)
+                        {
+                            return ((BigDecimal)var).round(mc);
+                        }
+                        else
+                        {
+                            return var;
+                        }
 					}
 				});
 			} else if (functions.containsKey(token.toUpperCase(Locale.ROOT))) {
@@ -1257,13 +1544,28 @@ public class Expression {
 				stack.push(PARAMS_START);
 			} else {
 				stack.push(new LazyNumber() {
-					public BigDecimal eval() {
-						return new BigDecimal(token, mc);
+					public Object eval() {
+                        if(isNumber(token))
+                        {
+                            return new BigDecimal(token, mc);
+                        }
+                        else
+                        {
+                            return token;
+                        }
 					}
 				});
 			}
 		}
-		return stack.pop().eval().stripTrailingZeros();
+		Object result = stack.pop().eval();
+        if(result instanceof BigDecimal)
+        {
+            return ((BigDecimal)result).stripTrailingZeros();
+        }
+        else
+        {
+            return result;
+        }
 	}
 
 	/**
@@ -1364,6 +1666,11 @@ public class Expression {
 	 */
 	public Expression setVariable(String variable, BigDecimal value) {
 		variables.put(variable, value);
+		return this;
+	}
+
+	public Expression setVariable(String variable, boolean value) {
+		variables.put(variable, value ? BigDecimal.ONE : BigDecimal.ZERO);
 		return this;
 	}
 
