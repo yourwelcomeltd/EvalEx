@@ -44,7 +44,9 @@ public class TestVariableCharacters {
 		assertEquals("Unknown operator or function: a.b", err);
 
 		expression = new Expression("a.b/2*PI+MIN(e,b)").setVariableCharacters("_.");
-		assertEquals("5.859875", expression.with("a.b", "2").and("b", "3").eval().toPlainString());
+		Object result = expression.with("a.b", "2").and("b", "3").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("5.859875", ((BigDecimal)result).toPlainString());
 
 		try {
 			expression = new Expression(".a.b/2*PI+MIN(e,b)").setVariableCharacters("_.");
@@ -55,13 +57,17 @@ public class TestVariableCharacters {
 		assertEquals("Unknown operator '.' at position 1", err);
 
 		expression = new Expression("a.b/2*PI+MIN(e,b)").setVariableCharacters("_.").setFirstVariableCharacters(".");
-		assertEquals("5.859875", expression.with("a.b", "2").and("b", "3").eval().toPlainString());
+		result = expression.with("a.b", "2").and("b", "3").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("5.859875", ((BigDecimal)result).toPlainString());
 	}
 
 	@Test
 	public void testFirstVarChar() {
 		Expression expression = new Expression("a.b*$PI").setVariableCharacters(".").setFirstVariableCharacters("$");
-		assertEquals("6", expression.with("a.b", "2").and("$PI", "3").eval().toPlainString());
+		Object result = expression.with("a.b", "2").and("$PI", "3").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("6", ((BigDecimal)result).toPlainString());
 
 	}
 }

@@ -15,40 +15,60 @@ public class TestVarArgs {
 	@Test
 	public void testSimple() {
 		Expression e = new Expression("max(1)");
-		assertEquals("1", e.eval().toPlainString());
+		Object result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("1", ((BigDecimal)result).toPlainString());
 		
 		e = new Expression("max(4,8)");
-		assertEquals("8", e.eval().toPlainString());
+		result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("8", ((BigDecimal)result).toPlainString());
 		
 		e = new Expression("max(12,4,8)");
-		assertEquals("12", e.eval().toPlainString());
+		result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("12", ((BigDecimal)result).toPlainString());
 		
 		e = new Expression("max(12,4,8,16,32)");
-		assertEquals("32", e.eval().toPlainString());
+		result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("32", ((BigDecimal)result).toPlainString());
 	}
 
 	@Test
 	public void testNested() {
 		Expression e = new Expression("max(1,2,max(3,4,5,max(9,10,3,4,5),8),7)");
-		assertEquals("10", e.eval().toPlainString());
+		Object result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("10", ((BigDecimal)result).toPlainString());
 	}
 	
 	@Test
 	public void testZero() {
 		Expression e = new Expression("max(0)");
-		assertEquals("0", e.eval().toPlainString());
+		Object result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("0", ((BigDecimal)result).toPlainString());
 		
 		e = new Expression("max(0,3)");
-		assertEquals("3", e.eval().toPlainString());
+		result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("3", ((BigDecimal)result).toPlainString());
 		
 		e = new Expression("max(2,0,-3)");
-		assertEquals("2", e.eval().toPlainString());
+		result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("2", ((BigDecimal)result).toPlainString());
 		
 		e = new Expression("max(-2,0,-3)");
-		assertEquals("0", e.eval().toPlainString());
+		result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("0", ((BigDecimal)result).toPlainString());
 		
 		e = new Expression("max(0,0,0,0)");
-		assertEquals("0", e.eval().toPlainString());
+		result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("0", ((BigDecimal)result).toPlainString());
 	}
 	
 	@Test
@@ -68,19 +88,22 @@ public class TestVarArgs {
 		Expression e = new Expression("3 * AVG(2,4)");
 		e.addFunction(e.new Function("AVG", -1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
+			public Object eval(List<Object> parameters) {
 				if (parameters.size() == 0) {
 					throw new ExpressionException("AVG requires at least one parameter");
 				}
 				BigDecimal avg = new BigDecimal(0);
-				for (BigDecimal parameter : parameters) {
-						avg = avg.add(parameter);
+				for (Object parameter : parameters) {
+						assertTrue(parameter instanceof BigDecimal);
+						avg = avg.add((BigDecimal)parameter);
 				}
 				return avg.divide(new BigDecimal(parameters.size()));
 			}
 		});
-		
-		assertEquals("9", e.eval().toPlainString());
+
+		Object result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("9", ((BigDecimal)result).toPlainString());
 	}
 	
 	@Test
@@ -88,18 +111,21 @@ public class TestVarArgs {
 		Expression e = new Expression("4 * AVG(2,4,6,8,10,12)");
 		e.addFunction(e.new Function("AVG", -1) {
 			@Override
-			public BigDecimal eval(List<BigDecimal> parameters) {
+			public Object eval(List<Object> parameters) {
 				if (parameters.size() == 0) {
 					throw new ExpressionException("AVG requires at least one parameter");
 				}
 				BigDecimal avg = new BigDecimal(0);
-				for (BigDecimal parameter : parameters) {
-						avg = avg.add(parameter);
+				for (Object parameter : parameters) {
+						assertTrue(parameter instanceof BigDecimal);
+						avg = avg.add((BigDecimal) parameter);
 				}
 				return avg.divide(new BigDecimal(parameters.size()));
 			}
 		});
-		
-		assertEquals("28", e.eval().toPlainString());
+
+		Object result = e.eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("28", ((BigDecimal)result).toPlainString());
 	}
 }

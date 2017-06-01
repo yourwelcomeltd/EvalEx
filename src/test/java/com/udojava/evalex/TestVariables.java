@@ -20,27 +20,33 @@ public class TestVariables {
 		assertEquals("21",
 				new Expression("3*x").setVariable("x", new BigDecimal("7"))
 						.eval().toString());
-		assertEquals(
-				"20",
-				new Expression("(a^2)+(b^2)")
-						.setVariable("a", new BigDecimal("2"))
-						.setVariable("b", new BigDecimal("4")).eval()
-						.toPlainString());
-		assertEquals(
-				"68719480000",
-				new Expression("a^(2+b)^2")
-						.setVariable("a", "2")
-						.setVariable("b", "4").eval()
-						.toPlainString());
+
+		Object result = new Expression("(a^2)+(b^2)")
+				.setVariable("a", new BigDecimal("2"))
+				.setVariable("b", new BigDecimal("4")).eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("20", ((BigDecimal)result).toPlainString());
+
+		result = new Expression("a^(2+b)^2")
+				.setVariable("a", "2")
+				.setVariable("b", "4").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("68719480000", ((BigDecimal)result).toPlainString());
 	}
 	
 	@Test
 	public void testSubstitution() {
 		Expression e = new Expression("x+y");
 
-		assertEquals("2", e.with("x", "1").and("y", "1").eval().toPlainString());
-		assertEquals("1", e.with("y", "0").eval().toPlainString());
-		assertEquals("0", e.with("x", "0").eval().toPlainString());
+		Object result = e.with("x", "1").and("y", "1").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("2", ((BigDecimal)result).toPlainString());
+		result = e.with("y", "0").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("1", ((BigDecimal)result).toPlainString());
+		result = e.with("x", "0").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("0", ((BigDecimal)result).toPlainString());
 	}
 	
 	@Test
@@ -48,25 +54,24 @@ public class TestVariables {
 		assertEquals("21",
 				new Expression("3*x").with("x", new BigDecimal("7"))
 						.eval().toString());
-		assertEquals(
-				"20",
-				new Expression("(a^2)+(b^2)")
-						.with("a", new BigDecimal("2"))
-						.with("b", new BigDecimal("4")).eval()
-						.toPlainString());
-		assertEquals(
-				"68719480000",
-				new Expression("a^(2+b)^2")
-						.with("a", "2")
-						.with("b", "4").eval()
-						.toPlainString());
-		
-		assertEquals(
-				"68719480000",
-				new Expression("_a^(2+_b)^2")
-						.with("_a", "2")
-						.with("_b", "4").eval()
-						.toPlainString());
+
+		Object result = new Expression("(a^2)+(b^2)")
+				.with("a", new BigDecimal("2"))
+				.with("b", new BigDecimal("4")).eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("20", ((BigDecimal)result).toPlainString());
+
+		result = new Expression("a^(2+b)^2")
+				.with("a", "2")
+				.with("b", "4").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("68719480000", ((BigDecimal)result).toPlainString());
+
+		result = new Expression("_a^(2+_b)^2")
+				.with("_a", "2")
+				.with("_b", "4").eval();
+		assertTrue(result instanceof BigDecimal);
+		assertEquals("68719480000", ((BigDecimal)result).toPlainString());
 	}
 	
 	@Test

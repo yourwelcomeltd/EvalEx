@@ -16,19 +16,25 @@ public class TestCaseInsensitive {
 
         Expression expression = new Expression("a");
         expression.setVariable("A", new BigDecimal(20));
-        Assert.assertEquals(expression.eval().intValue(), 20);
+        Object result = expression.eval();
+        Assert.assertTrue(result instanceof BigDecimal);
+        Assert.assertEquals(((BigDecimal)result).intValue(), 20);
 
         expression = new Expression("a + B");
         expression.setVariable("A", new BigDecimal(10));
         expression.setVariable("b", new BigDecimal(10));
-        Assert.assertEquals(expression.eval().intValue(), 20);
+        result = expression.eval();
+        Assert.assertTrue(result instanceof BigDecimal);
+        Assert.assertEquals(((BigDecimal)result).intValue(), 20);
 
         expression = new Expression("a+B");
         expression.setVariable("A", "c+d");
         expression.setVariable("b", new BigDecimal(10));
         expression.setVariable("C", new BigDecimal(5));
         expression.setVariable("d", new BigDecimal(5));
-        Assert.assertEquals(expression.eval().intValue(), 20);
+        result = expression.eval();
+        Assert.assertTrue(result instanceof BigDecimal);
+        Assert.assertEquals(((BigDecimal)result).intValue(), 20);
     }
 
     @Test
@@ -38,10 +44,11 @@ public class TestCaseInsensitive {
         expression.setVariable("A", new BigDecimal(1));
         expression.addFunction(expression.new Function("testSum",-1){
             @Override
-            public BigDecimal eval(List<BigDecimal> parameters) {
+            public Object eval(List<Object> parameters) {
                 BigDecimal value =null;
-                for (BigDecimal d : parameters) {
-                    value = value == null ? d : value.add(d);
+                for (Object d : parameters) {
+                    Assert.assertTrue(d instanceof BigDecimal);
+                    value = value == null ? (BigDecimal)d : value.add((BigDecimal)d);
                 }
                 return value;
             }

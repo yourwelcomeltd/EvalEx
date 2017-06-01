@@ -18,7 +18,7 @@ public class TestExposedComponents {
         int originalOperator = expression.getDeclaredOperators().size();
         expression.addOperator(expression.new Operator("$$", -1, true) {
             @Override
-            public BigDecimal eval(BigDecimal v1, BigDecimal v2) {
+            public Object eval(Object v1, Object v2) {
                 return null;
             }
         });
@@ -42,7 +42,7 @@ public class TestExposedComponents {
         int originalFunctionCount = expression.getDeclaredFunctions().size();
         expression.addFunction(expression.new Function("func1", 3) {
             @Override
-            public BigDecimal eval(List<BigDecimal> parameters) {
+            public Object eval(List<Object> parameters) {
                 return null;
             }
         });
