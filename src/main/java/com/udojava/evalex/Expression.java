@@ -1381,11 +1381,7 @@ public class Expression {
         {
             return false;
         }
-        if("0".equals(st))
-        {
-            return false;
-        }
-        return true;
+        return !"0".equals(st);
     }
 
 	/**
